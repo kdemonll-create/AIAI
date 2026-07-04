@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aegis Mind</title>
+<style>
+  :root{
+    --bg:#0C1418; --panel:#101D22; --panel-2:#15262C; --line:#22383F;
+    --text:#DBE7E4; --muted:#789590; --faint:#4E6a67;
+    --signal:#45D6BE; --signal-weak:rgba(69,214,190,.14); --signal-line:rgba(69,214,190,.45);
+    --alert:#F0864E; --alert-weak:rgba(240,134,78,.14); --alert-line:rgba(240,134,78,.5);
+    --mono:ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:14px; line-height:1.5;
+    background-image:radial-gradient(1100px 550px at 75% -10%, rgba(69,214,190,.06), transparent 60%)}
+  .micro{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+  header{display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--line)}
+  header .name{font-family:var(--mono); font-weight:600; letter-spacing:.06em}
+  header .ver{font-family:var(--mono); font-size:11px; color:var(--faint)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .dot.on{background:var(--signal); box-shadow:0 0 10px var(--signal)}
+  .vitals{margin-left:auto; display:flex; gap:18px; font-family:var(--mono); font-size:12px}
+  .vitals b{color:var(--signal); font-weight:600}
+  .vitals .warm b{color:var(--alert)}
+
+  main{display:grid; grid-template-columns:400px minmax(0,1fr); gap:18px; padding:18px 22px; align-items:start}
+  @media (max-width:900px){ main{grid-template-columns:1fr} }
+
+  .panel{border:1px solid var(--line); border-radius:var(--r); background:var(--panel); margin-bottom:18px}
+  .panel-h{padding:10px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center}
+  .panel-b{padding:14px}
+
+  #faceWrap{padding:0; line-height:0}
+  #faceCanvas{width:100%; display:block; border-radius:0 0 var(--r) var(--r); cursor:pointer}
+
+  .words{display:flex; flex-wrap:wrap; gap:6px}
+  .word{font-family:var(--mono); font-size:11px; color:var(--signal); background:var(--signal-weak);
+    border:1px solid var(--signal-line); border-radius:100px; padding:3px 9px}
+  .tline{font-size:12.5px; color:var(--muted); margin:5px 0; line-height:1.45}
+  .tline .k{font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    padding:1px 7px; border-radius:100px; border:1px solid var(--line); color:var(--faint); margin-right:7px}
+  .tline .k.inference,.tline .k.expectation-met{border-color:var(--signal-line); color:var(--signal)}
+  .tline .k.want,.tline .k.feeling{border-color:var(--alert-line); color:var(--alert)}
+  .expect{font-family:var(--mono); font-size:11.5px; color:var(--alert); margin-top:8px}
+  .rail-empty{color:var(--faint); font-size:12px; font-family:var(--mono)}
+
+  /* console */
+  #chat{height:430px; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px}
+  .entry .who{font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .entry.aegis .who{color:var(--signal)}
+  .entry.inner .who{color:var(--faint)}
+  .entry .text{white-space:pre-wrap}
+  .entry.you .text{color:var(--text)}
+  .entry.aegis .text{color:var(--text); font-size:15px}
+  .entry.inner .text{color:var(--muted); font-style:italic; font-size:13px}
+  .thought{font-family:var(--mono); font-size:11.5px; color:var(--faint); margin-top:3px}
+  .composer{border-top:1px solid var(--line); padding:12px 14px}
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+  .chip{font-family:var(--mono); font-size:11px; color:var(--muted); background:var(--panel-2);
+    border:1px solid var(--line); border-radius:100px; padding:5px 11px; cursor:pointer}
+  .chip:hover{border-color:var(--signal-line); color:var(--signal)}
+  .row{display:flex; gap:10px}
+  .row input{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:7px;
+    color:var(--text); font-size:14px; padding:11px 13px; outline:none}
+  .row input:focus{border-color:var(--signal-line)}
+  .row button{font-family:var(--mono); font-size:12px; color:var(--bg); background:var(--signal);
+    border:none; border-radius:7px; padding:0 18px; cursor:pointer; font-weight:600}
+  .acts{display:flex; gap:8px; margin-top:10px}
+  .acts button{font-family:var(--mono); font-size:11px; color:var(--muted); background:transparent;
+    border:1px solid var(--line); border-radius:7px; padding:5px 12px; cursor:pointer}
+  .acts button:hover{border-color:var(--signal-line); color:var(--signal)}
+  .acts button.on{border-color:var(--signal-line); color:var(--signal); background:var(--signal-weak)}
+  ::-webkit-scrollbar{width:9px} ::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <span class="name" id="mName">AEGIS MIND</span>
+  <span class="ver" id="mVer">v13</span>
+  <div class="vitals">
+    <span>mood <b id="vMood">–</b></span>
+    <span>cycles <b id="vCycles">0</b></span>
+    <span>facts <b id="vFacts">0</b></span>
+    <span>memories <b id="vMem">0</b></span>
+    <span class="warm">threat <b id="vThreat">0.00</b></span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="panel">
+      <div class="panel-h"><span class="micro">presence</span><span class="micro" id="faceNote">–</span></div>
+      <div class="panel-b" id="faceWrap"><canvas id="faceCanvas" width="400" height="400"></canvas></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="micro">workspace · train of thought</span><span class="micro" id="wsNote">–</span></div>
+      <div class="panel-b">
+        <div class="micro" style="margin-bottom:6px">on its mind</div>
+        <div class="words" id="wsField"><span class="rail-empty">the field is quiet</span></div>
+        <div class="micro" style="margin:13px 0 4px">recent thoughts</div>
+        <div id="wsStream"><span class="rail-empty">no thoughts yet</span></div>
+        <div id="wsExpect"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="panel">
+      <div class="panel-h"><span class="micro">console</span><span class="micro" id="conNote">talk to the mind</span></div>
+      <div id="chat"></div>
+      <div class="composer">
+        <div class="chips" id="chips">
+          <span class="chip" data-s="hello, how are you feeling?">say hello</span>
+          <span class="chip" data-s="I can smell smoke in the hallway">mention smoke…</span>
+          <span class="chip" data-s="what's on your mind?">what's on your mind</span>
+          <span class="chip" data-s="is a dolphin an animal?">test its reasoning</span>
+          <span class="chip" data-s="/mind">/mind</span>
+        </div>
+        <div class="row">
+          <input id="input" placeholder="say something — watch the face and the train of thought react…" autocomplete="off">
+          <button id="send">Send</button>
+        </div>
+        <div class="acts">
+          <button id="btnWatch">watch: off</button>
+          <button id="btnPursue">pursue goal step</button>
+          <button id="btnSleep">sleep / consolidate</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (x,a,b)=>Math.max(a,Math.min(b,x));
+let connected=false, eventSeq=0;
+
+async function api(path, method='GET', body=null){
+  const opt={method, headers:{'Content-Type':'application/json'}};
+  if(body) opt.body=JSON.stringify(body);
+  const res=await fetch(path,opt);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  return res.json();
+}
+
+/* ============================================================= */
+/* THE PARTICLE FACE                                              */
+/* Every visual property is driven by the mind's real state:      */
+/*   valence -> mouth curve + hue   arousal -> jitter + eyes wide */
+/*   energy  -> lids droop          curiosity -> orbiting aura    */
+/*   workspace broadcast -> pulse   speaking -> mouth animates    */
+/* ============================================================= */
+const AegisFace = (() => {
+  const cv = $('faceCanvas'), ctx = cv.getContext('2d');
+  const W = 400, H = 400, CX = 200, CY = 196;
+  const DPR = Math.min(2, window.devicePixelRatio||1);
+  cv.width = W*DPR; cv.height = H*DPR; ctx.scale(DPR,DPR);
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // mind-state the face expresses (smoothed toward live values)
+  const S = {valence:.1, arousal:.25, curiosity:.55, energy:.9, threat:0, mood:'calm', fieldN:0};
+  const T = {...S};                       // targets from the API
+  let speakUntil=0, blinkUntil=0, nextBlink=performance.now()+2600;
+  let pulses=[], lastFocusAt=null;
+
+  // ---- particle pool with fixed group assignment -------------------------
+  const groups = {head:130, browL:16, browR:16, eyeL:34, eyeR:34, pupL:7, pupR:7, mouthU:36, mouthL:26, aura:86};
+  const P=[];
+  for(const [g,n] of Object.entries(groups))
+    for(let i=0;i<n;i++)
+      P.push({g, i, n, x:CX+(Math.random()-.5)*300, y:CY+(Math.random()-.5)*300,
+              vx:0, vy:0, ph:Math.random()*Math.PI*2, sp:.4+Math.random()*.8});
+
+  const ell=(cx,cy,rx,ry,i,n,a0=0,a1=Math.PI*2)=>{
+    const a=a0+(a1-a0)*(i/n); return [cx+Math.cos(a)*rx, cy+Math.sin(a)*ry];
+  };
+  const qbez=(p0,p1,p2,t)=>{
+    const u=1-t; return [u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0], u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]];
+  };
+
+  function expression(now){
+    const speaking = now < speakUntil;
+    const blink = now < blinkUntil;
+    let eyeOpen = clamp(.35 + .5*S.energy + .3*S.arousal, .18, 1.15);
+    if(blink) eyeOpen *= .07;
+    const browRaise = 13*S.arousal + (S.threat>.5||S.mood==='alarmed'?9:0) - (S.energy<.35?7:0);
+    const browTilt  = (S.mood==='glum'||S.mood==='uneasy') ? 5 : 0;   // outer ends sag
+    const curve = clamp(S.valence, -1, 1);
+    const open  = speaking ? .28 + .30*Math.abs(Math.sin(now*.016)) : (S.arousal>.8 ? .12 : .02);
+    return {eyeOpen, browRaise, browTilt, curve, open};
+  }
+
+  function targetFor(p, E, now){
+    const eyeY=158, eyeDX=58, eyeRX=20;
+    switch(p.g){
+      case 'head':  return ell(CX, CY, 118, 132, p.i, p.n);
+      case 'eyeL':  return ell(CX-eyeDX, eyeY, eyeRX, eyeRX*E.eyeOpen, p.i, p.n);
+      case 'eyeR':  return ell(CX+eyeDX, eyeY, eyeRX, eyeRX*E.eyeOpen, p.i, p.n);
+      case 'pupL':  return ell(CX-eyeDX, eyeY, 4.5, 4.5*Math.min(1,E.eyeOpen), p.i, p.n);
+      case 'pupR':  return ell(CX+eyeDX, eyeY, 4.5, 4.5*Math.min(1,E.eyeOpen), p.i, p.n);
+      case 'browL': {
+        const t=p.i/(p.n-1), x=CX-eyeDX-26+52*t;
+        return [x, eyeY-34-E.browRaise - Math.sin(t*Math.PI)*6 + (1-t)*E.browTilt];
+      }
+      case 'browR': {
+        const t=p.i/(p.n-1), x=CX+eyeDX-26+52*t;
+        return [x, eyeY-34-E.browRaise - Math.sin(t*Math.PI)*6 + t*E.browTilt];
+      }
+      case 'mouthU': {
+        const t=p.i/(p.n-1);
+        return qbez([CX-54,258],[CX,258-34*E.curve-6*E.open],[CX+54,258],t);
+      }
+      case 'mouthL': {
+        const t=p.i/(p.n-1);
+        return qbez([CX-54,258],[CX,258-20*E.curve+30*E.open],[CX+54,258],t);
+      }
+      case 'aura': {
+        const r=142+16*Math.sin(p.ph+now*.0004*p.sp);
+        const a=p.ph + now*.00035*p.sp*(0.5+S.curiosity);
+        return [CX+Math.cos(a)*r, CY+Math.sin(a)*r*.94];
+      }
+    }
+  }
+
+  function hue(){
+    if(S.threat>.5 || S.mood==='alarmed') return 18;
+    return S.valence>=0 ? 168 : 168 + S.valence*140;   // teal -> ember as valence falls
+  }
+
+  function frame(now){
+    // smooth live state toward API targets
+    for(const k of ['valence','arousal','curiosity','energy','threat'])
+      S[k] += (T[k]-S[k])*.04;
+    S.mood=T.mood; S.fieldN=T.fieldN;
+
+    if(now>nextBlink){ blinkUntil=now+130; nextBlink=now+2200+Math.random()*4200; }
+    const E=expression(now);
+    const jit = reduce? 0 : .35 + S.arousal*2.1;
+
+    ctx.fillStyle='rgba(12,20,24,0.46)'; ctx.fillRect(0,0,W,H);   // trails
+    const h=hue(), auraAlpha=.14+.5*S.curiosity;
+
+    for(const p of P){
+      const tgt=targetFor(p,E,now);
+      let fx=(tgt[0]-p.x)*.085, fy=(tgt[1]-p.y)*.085;
+      for(const pu of pulses){                        // broadcast shockwaves
+        const age=(now-pu.t)/650; if(age>1) continue;
+        const dx=p.x-CX, dy=p.y-CY, d=Math.hypot(dx,dy)||1;
+        const ring=Math.exp(-Math.pow((d-age*190)/26,2))*(1-age)*3.4;
+        fx+=dx/d*ring; fy+=dy/d*ring;
+      }
+      p.vx=(p.vx+fx)*.80+(Math.random()-.5)*jit;
+      p.vy=(p.vy+fy)*.80+(Math.random()-.5)*jit;
+      p.x+=p.vx; p.y+=p.vy;
+      const isAura=p.g==='aura';
+      const a=isAura?auraAlpha:.9, r=isAura?1.5:1.9;
+      const light=54+S.arousal*12+(isAura?8:0);
+      ctx.fillStyle=`hsla(${h},72%,${light}%,${a*.14})`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,r*3.1,0,7); ctx.fill();
+      ctx.fillStyle=`hsla(${h},78%,${light+8}%,${a})`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,7); ctx.fill();
+    }
+    pulses=pulses.filter(pu=>now-pu.t<700);
+    lastFrame=performance.now();
+    schedule();
+  }
+  // rAF is paused while the page is hidden; a low-rate watchdog keeps the
+  // face alive (and screenshot-able) at ~10fps until visibility returns.
+  let lastFrame=0, rafPending=false;
+  function schedule(){ if(!rafPending){ rafPending=true;
+    requestAnimationFrame(t=>{ rafPending=false; frame(t); }); } }
+  schedule();
+  setInterval(()=>{ if(performance.now()-lastFrame>200) frame(performance.now()); }, 100);
+
+  return {
+    update(s){
+      if(s.affect){ T.valence=s.affect.valence; T.arousal=s.affect.arousal;
+                    T.curiosity=s.affect.curiosity; T.energy=s.affect.energy; T.mood=s.affect.mood; }
+      if(s.state) T.threat=s.state.threat_level||0;
+      if(s.brain){ T.fieldN=(s.brain.field||[]).length;
+        const at=s.brain.focus&&s.brain.focus.at;
+        if(at&&at!==lastFocusAt){ if(lastFocusAt!==null) pulses.push({t:performance.now()}); lastFocusAt=at; } }
+      $('faceNote').textContent=T.mood;
+    },
+    speak(len){ speakUntil=performance.now()+Math.min(4500, 800+len*26); },
+    pulse(){ pulses.push({t:performance.now()}); },
+  };
+})();
+$('faceCanvas').addEventListener('click', ()=>AegisFace.pulse());
+
+/* ---------------- workspace panel ---------------- */
+function renderBrain(b){
+  if(!b) return;
+  $('wsNote').textContent=`${b.cycles} cycles · ${b.confirmations} predicted`;
+  $('wsField').innerHTML=(b.field&&b.field.length)
+    ? b.field.slice(0,9).map(f=>`<span class="word" style="opacity:${.35+.65*f.activation}">${esc(f.concept)}</span>`).join('')
+    : '<span class="rail-empty">the field is quiet</span>';
+  $('wsStream').innerHTML=(b.stream&&b.stream.length)
+    ? b.stream.slice(-5).reverse().map(t=>`<div class="tline"><span class="k ${esc(t.kind)}">${esc(t.kind)}</span>${esc(t.content)}</div>`).join('')
+    : '<span class="rail-empty">no thoughts yet</span>';
+  $('wsExpect').innerHTML=(b.expectations&&b.expectations.length)
+    ? '<div class="micro" style="margin-bottom:4px">anticipating</div>'+b.expectations.slice(0,3)
+        .map(e=>`<div class="expect">${esc(e.concept)} <span style="color:var(--faint)">(${esc(e.because)})</span></div>`).join('')
+    : '';
+}
+
+/* ---------------- console ---------------- */
+function addEntry(who, text, cls, thought){
+  const e=document.createElement('div'); e.className='entry '+cls;
+  e.innerHTML=`<div class="who">${esc(who)}</div><div class="text">${esc(text)}</div>`
+             +(thought?`<div class="thought">~ ${esc(thought)}</div>`:'');
+  $('chat').appendChild(e); $('chat').scrollTop=$('chat').scrollHeight;
+}
+async function send(){
+  const inp=$('input'); const text=inp.value.trim();
+  if(!text||!connected) return;
+  inp.value=''; addEntry('you', text, 'you');
+  try{
+    const r=await api('/api/perceive','POST',{text});
+    const reply=r.reply||r.response||'(no reply)';
+    addEntry(`aegis · ${r.mood||''}`, reply, 'aegis', r.thought);
+    AegisFace.speak(reply.length);
+    if(r.confirmed&&r.confirmed.length)
+      addEntry('prediction', `I anticipated '${r.confirmed[0]}' -- my model of the situation held.`, 'inner');
+    refresh();
+  }catch(e){ addEntry('system','The mind could not be reached.','inner'); }
+}
+
+/* ---------------- polling ---------------- */
+async function refresh(){
+  try{
+    const s=await api('/api/state');
+    connected=true; $('dot').classList.add('on');
+    if(s.state){ $('mName').textContent=(s.state.name||'AEGIS MIND').toUpperCase();
+      $('mVer').textContent='v'+s.state.version; $('vCycles').textContent=s.state.cycles;
+      $('vThreat').textContent=(s.state.threat_level||0).toFixed(2); }
+    if(s.affect) $('vMood').textContent=s.affect.mood;
+    if(s.knowledge) $('vFacts').textContent=s.knowledge.facts;
+    if(s.memory&&s.memory.recent) $('vMem').textContent=s.memory.recent.length? (s.memory.recent[0].id||s.memory.recent.length):0;
+    if(s.watch){ const b=$('btnWatch'); b.classList.toggle('on',s.watch.running);
+      b.textContent='watch: '+(s.watch.running?'on':'off'); }
+    renderBrain(s.brain);
+    AegisFace.update(s);
+  }catch(e){ connected=false; $('dot').classList.remove('on'); }
+}
+async function pollEvents(){
+  try{
+    const r=await api('/api/events?since='+eventSeq);
+    (r.events||[]).forEach(ev=>{
+      const t=ev.text.replace(/^\[(inner voice|the mind noticed)\]\s*/,'');
+      addEntry('inner voice', t, 'inner'); AegisFace.pulse();
+    });
+    eventSeq=r.next??eventSeq;
+  }catch(e){}
+}
+
+/* ---------------- wiring ---------------- */
+$('send').addEventListener('click',send);
+$('input').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();send();} });
+$('chips').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(c){$('input').value=c.dataset.s; send();} });
+$('btnWatch').addEventListener('click',async()=>{ const on=$('btnWatch').classList.contains('on');
+  try{ await api('/api/watch','POST',{action:on?'stop':'start'}); refresh(); }catch(e){} });
+$('btnPursue').addEventListener('click',async()=>{ try{ const r=await api('/api/pursue','POST',{});
+  addEntry('inner voice', r.message, 'inner'); AegisFace.pulse(); refresh(); }catch(e){} });
+$('btnSleep').addEventListener('click',async()=>{ try{ const r=await api('/api/sleep','POST',{});
+  addEntry('inner voice', r.message, 'inner'); AegisFace.pulse(); refresh(); }catch(e){} });
+
+refresh();
+setInterval(refresh,1300);
+setInterval(pollEvents,1600);
+</script>
+</body>
+</html>
