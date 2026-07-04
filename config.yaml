@@ -1,0 +1,190 @@
+mind:
+  name: "Aegis Mind"
+  version: "13"
+
+# Phase 13: the Resonance Workspace (core/brain.py) -- a spreading-activation
+# field over the mind's concepts + global-workspace competition between
+# specialist thought proposals + prospection (expectations that get confirmed
+# or surprised). The whole train of thought is inspectable via /mind.
+brain:
+  state_path: aegis_mind/memory_store/brain_state.json
+  half_life_seconds: 90.0     # how fast the activation field cools when idle
+  stream_length: 30           # conscious moments kept in the visible stream
+  inference_bias: 1.15        # derived thoughts get a slight edge in competition
+  continuity_bonus: 0.15      # thoughts sharing concepts with the last one
+  repeat_penalty: 0.85        # same kind of thought twice in a row is dampened
+  expectation_ttl_seconds: 600.0
+  max_expectations: 12
+
+# Phase 9: affect -- a four-dimensional mood (valence / arousal / curiosity /
+# energy) that every perception nudges and time pulls back toward baseline.
+affect:
+  state_path: aegis_mind/memory_store/affect_state.json
+  half_life_seconds: 240.0   # how fast mood drifts back to baseline when idle
+
+# Phase 9: the pre-learned conversational voice. Works fully offline (no LLM),
+# grounded in the mind's real memories / learning / mood, and teachable.
+chat:
+  enabled: true
+  persona_name: Aegis
+  state_path: aegis_mind/memory_store/chat_state.json
+
+# Phase 9: inner monologue. While /watch runs, the mind occasionally surfaces
+# a spontaneous thought. Purely cognitive -- musing can only reflect, never act.
+muse:
+  enabled: true
+  min_interval: 45.0
+  chance: 0.35
+
+attention:
+  # Stimuli scoring at/above this are written to long-term memory.
+  store_threshold: 0.45
+
+# Phase 8: the self-learning subsystem. All parameters are safe defaults; the
+# model is an interpretable online logistic regression (see core/learning.py).
+learning:
+  state_path: aegis_mind/memory_store/learning_state.json
+  alpha_max: 0.7          # cap on how much the mind trusts learning over its priors
+  alpha_k: 25.0           # experience needed to reach ~half trust
+  model_lr: 0.08          # learning rate for attention weights
+  model_l2: 0.0001        # L2 regularisation
+  feedback_lr_boost: 3.0  # explicit /feedback teaches faster than passive experience
+  recall_reward: 0.65     # implicit label when a memory proves worth recalling
+  habituation_decay: 0.55         # how fast repeated stimuli lose salience
+  habituation_recovery_seconds: 90.0  # how fast salience recovers when they stop
+  lexicon_smoothing: 0.5  # smoothing for learned word-salience log-odds
+  save_every: 8           # persist learning state every N perceptions
+
+memory:
+  short_term_limit: 25
+  db_path: aegis_mind/memory_store/mind_memory.sqlite
+  graph_path: aegis_mind/memory_store/relationship_graph.json
+  max_graph_edges_per_node: 40
+  graph_decay: 0.985      # association edges fade slightly over time (use-it-or-lose-it)
+  graph_min_edge: 0.05    # edges weaker than this are pruned
+  save_every: 8           # flush memory to disk every N stores
+
+instinct:
+  threat_threshold: 0.80
+  preserve_power_threshold: 0.90
+
+vision:
+  enabled: true
+  camera_index: 0
+  save_frames: true
+  frame_dir: aegis_mind/logs/frames
+  motion_threshold: 18.0
+  detect_faces: true       # Haar-cascade face presence (ships with opencv, no download)
+  scene_memory: 40         # recent scene hashes kept for visual-novelty detection
+  novelty_hamming_full: 22 # pHash distance treated as a completely new scene
+
+# Phase 8 senses. Disabled by default; enable the ones your machine supports.
+audio:
+  enabled: false           # needs: pip install sounddevice numpy (+ a microphone)
+  sample_seconds: 1.0
+  sample_rate: 16000
+  state_path: aegis_mind/memory_store/audio_baseline.json
+  loud_ratio: 3.0          # this many times the learned ambient floor counts as "loud"
+  adapt: 0.05              # how fast the ambient-noise baseline tracks the room
+
+screen:
+  enabled: false           # needs: pip install mss  (or Pillow)
+  downscale: 64            # thumbnail edge used for cheap change detection
+
+system_senses:
+  low_battery_percent: 20.0
+  network_host: "1.1.1.1"
+  network_port: 53
+
+# Phase 8 background perception loop. Opt-in at runtime via /watch start.
+# SAFETY: this loop only senses, reasons and remembers -- it has no motor access.
+perception_loop:
+  interval: 6.0            # seconds between perception ticks
+  announce_threshold: 0.6  # only surface events at/above this attention value
+
+# Phase 8 OODA reaction cycle (Observe / Orient / Decide / Act).
+# SAFETY: the reaction repertoire is cognitive only.
+ooda:
+  enabled: true                    # false = label reactions but skip their side effects
+  trace_memory: 6                  # recent actions fed back into the next Orient
+  threat_alert: 0.6                # threat at/above this drives an alert/seek-input reaction
+  prioritize_importance: 0.7       # importance at/above this drives a prioritise reaction
+  observe_more_novelty: 0.6        # novelty at/above this favours watching before committing
+  learn_from_decisions: true       # let confident decisions gently train the fast model
+  decision_learn_weight: 0.3       # (low) weight for that distillation
+  decision_learn_min_support: 0.5  # only when non-model evidence backs the decision
+
+self_monitor:
+  cpu_percent: 90.0
+  memory_percent: 90.0
+  disk_percent: 95.0
+
+# Optional LLM bridge ("language cortex"). provider "openai" = any
+# OpenAI-compatible endpoint (default: NVIDIA Integrate / DeepSeek).
+# The interpretable mind never depends on it: every call degrades gracefully.
+# SECURITY: prefer setting the key via the environment variable (api_key_env)
+# instead of leaving it in this file in plaintext.
+llm:
+  enabled: true
+  provider: openai
+  endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+  model: deepseek-ai/deepseek-v4-pro
+  api_key: "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"
+  api_key_env: NVIDIA_API_KEY   # if set, overrides api_key above
+  timeout_seconds: 60
+  temperature: 1.0
+  top_p: 0.95
+  max_tokens: 1024              # per reply; keep conversational, not essays
+  use_in_chat: true             # open-ended chat turns route through the bridge,
+                                # grounded in the mind's live internal state
+  extra_body:
+    chat_template_kwargs:
+      thinking: false
+
+hardware:
+  enabled: false
+  dry_run: true
+  serial_port: COM3
+  baud_rate: 115200
+
+instincts:
+  threat_keywords:
+    - danger
+    - emergency
+    - fire
+    - intruder
+    - attack
+    - unsafe
+  preserve_keywords:
+    - remember
+    - important
+    - critical
+    - save
+
+# Phase 10: domain knowledge fused in from the MultiWOZ task-oriented dialogue
+# corpus (multiwoz-master/db/*.json). Plain dict filtering, not a neural model.
+domain_knowledge:
+  enabled: true
+  db_dir: multiwoz-master/db
+
+# Phase 11: the deliberative tier. Drives create goal pressure; goals decompose
+# into a CLOSED, cognitive-only step vocabulary; consolidation turns recurring
+# episodes into beliefs.
+drives:
+  state_path: aegis_mind/memory_store/drives_state.json
+  self_goal_threshold: 0.70   # a drive past this may propose a (capped) self goal
+
+goals:
+  state_path: aegis_mind/memory_store/goals_state.json
+  max_active: 5               # total active goals
+  max_self_active: 2          # of which at most this many are self-proposed
+
+consolidation:
+  state_path: aegis_mind/memory_store/consolidation_state.json
+  min_cluster: 3              # episodes needed before a theme becomes a belief
+  similarity: 0.45            # token-overlap (Jaccard) required to cluster
+  scan_limit: 300             # how many recent episodes one pass considers
+
+# Phase 12: typed relational knowledge + multi-hop inference (core/knowledge.py).
+knowledge:
+  state_path: aegis_mind/memory_store/knowledge_state.json
